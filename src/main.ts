@@ -2,18 +2,14 @@ import './style.css'
 import { newInstance } from '@jsplumb/browser-ui'
 import ELK from 'elkjs/lib/elk.bundled.js'
 
-const instance = newInstance({
-  container: document.querySelector<HTMLDivElement>('#app')!,
-});
-
 const graph = {
   id: "root",
   layoutOptions: { 'elk.algorithm': 'layered' },
   children: [
     { id: "n1", width: 100, height: 50 },
-    { id: "n2", width: 150, height: 50 },
-    { id: "n3", width: 100, height: 150 },
-    { id: "n4", width: 200, height: 150 }
+    { id: "n2", width: 100, height: 50 },
+    { id: "n3", width: 100, height: 50 },
+    { id: "n4", width: 100, height: 50 }
   ],
   edges: [
     { id: "e1", sources: [ "n1" ], targets: [ "n2" ] },
@@ -22,6 +18,10 @@ const graph = {
     { id: "e4", sources: [ "n3" ], targets: [ "n4" ] }
   ]
 }
+
+const instance = newInstance({
+  container: document.querySelector<HTMLDivElement>('#app')!,
+});
 
 const elk = new ELK()
 
