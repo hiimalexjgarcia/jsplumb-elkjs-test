@@ -4,18 +4,26 @@ import ELK from 'elkjs/lib/elk.bundled.js'
 
 const graph = {
   id: "root",
-  layoutOptions: { 'elk.algorithm': 'layered' },
+  layoutOptions: {
+    'elk.algorithm': 'layered',
+    'elk.layered.spacing.baseValue': 100
+  },
   children: [
     { id: "n1", width: 100, height: 50 },
     { id: "n2", width: 100, height: 50 },
     { id: "n3", width: 100, height: 50 },
-    { id: "n4", width: 100, height: 50 }
+    { id: "n4", width: 100, height: 50 },
+    { id: "n5", width: 100, height: 50 },
+    { id: "n6", width: 100, height: 50 }
   ],
   edges: [
     { id: "e1", sources: [ "n1" ], targets: [ "n2" ] },
     { id: "e2", sources: [ "n1" ], targets: [ "n3" ] },
-    { id: "e3", sources: [ "n2" ], targets: [ "n4" ] },
-    { id: "e4", sources: [ "n3" ], targets: [ "n4" ] }
+    { id: "e3", sources: [ "n1" ], targets: [ "n5" ] },
+    { id: "e4", sources: [ "n2" ], targets: [ "n4" ] },
+    { id: "e5", sources: [ "n3" ], targets: [ "n4" ] },
+    { id: "e6", sources: [ "n4" ], targets: [ "n6" ] },
+    { id: "e7", sources: [ "n5" ], targets: [ "n6" ] }
   ]
 }
 
@@ -27,7 +35,6 @@ const elk = new ELK()
 
 elk.layout(graph)
   .then((r) => {
-    console.log(r)
     r.children?.forEach(c => {
       const node = document.createElement("div")
       node.id = c.id
