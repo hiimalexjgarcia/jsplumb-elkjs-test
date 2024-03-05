@@ -6,7 +6,7 @@ const graph = {
   id: "root",
   layoutOptions: {
     'elk.algorithm': 'layered',
-    'elk.layered.spacing.baseValue': 100,
+    'elk.layered.spacing.baseValue': '100',
     'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
   },
   children: [
