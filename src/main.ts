@@ -6,7 +6,8 @@ const graph = {
   id: "root",
   layoutOptions: {
     'elk.algorithm': 'layered',
-    'elk.layered.spacing.baseValue': 100
+    'elk.layered.spacing.baseValue': 100,
+    'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
   },
   children: [
     { id: "n1", width: 100, height: 50 },
@@ -29,6 +30,7 @@ const graph = {
 
 const instance = newInstance({
   container: document.querySelector<HTMLDivElement>('#app')!,
+  elementsDraggable: false,
 });
 
 const elk = new ELK()
