@@ -1,7 +1,6 @@
 import { newInstance } from '@jsplumb/browser-ui'
 import ELK from 'elkjs/lib/elk.bundled.js'
 import '../scss/styles.scss'
-import * as bootstrap from 'bootstrap'
 
 const graph = {
   id: "root",
