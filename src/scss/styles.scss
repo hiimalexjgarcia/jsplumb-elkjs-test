@@ -1,0 +1,15 @@
+// Import all of Bootstrap's CSS
+@import "bootstrap/scss/bootstrap";
+
+#app {
+    position: relative;
+}
+
+.node {
+    width: 100px;
+    height: 50px;
+    border: 1px solid black;
+    background-color: rgb(240, 240, 240);
+    box-shadow: rgba(0,0,0,.25) 3px 3px 3px;
+    position: absolute;
+}

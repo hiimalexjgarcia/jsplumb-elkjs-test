@@ -1,6 +1,7 @@
-import './style.css'
 import { newInstance } from '@jsplumb/browser-ui'
 import ELK from 'elkjs/lib/elk.bundled.js'
+import '../scss/styles.scss'
+import * as bootstrap from 'bootstrap'
 
 const graph = {
   id: "root",
@@ -28,7 +29,7 @@ const graph = {
   ]
 }
 
-const instance = newInstance({
+const toolkit = newInstance({
   container: document.querySelector<HTMLDivElement>('#app')!,
   elementsDraggable: false,
 });
@@ -49,7 +50,7 @@ elk.layout(graph)
       document.querySelector<HTMLDivElement>('#app')?.appendChild(node)
     })
     r.edges?.forEach(e => {
-      instance.connect({
+      toolkit.connect({
         source: document.getElementById(e.sources[0]) || undefined,
         target: document.getElementById(e.targets[0]) || undefined,
         anchor: { type: "Perimeter", options: { shape: "Rectangle" } },
