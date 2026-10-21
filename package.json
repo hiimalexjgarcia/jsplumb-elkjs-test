@@ -11,7 +11,7 @@
   "devDependencies": {
     "sass": "^1.79.3",
     "typescript": "^5.2.2",
-    "vite": "^8.0.7"
+    "vite": "^8.0.16"
   },
   "dependencies": {
     "@jsplumb/browser-ui": "^6.2.10",
