@@ -3,61 +3,51 @@ import ELK from 'elkjs/lib/elk.bundled.js'
 import './graph-node'
 import 'bootstrap/dist/css/bootstrap.css'
 import '../scss/styles.scss'
-
-const graph = {
-  id: "root",
-  layoutOptions: {
-    'elk.algorithm': 'layered',
-    'elk.layered.spacing.baseValue': '100',
-    'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
-  },
-  children: [
-    { id: "n1", width: 100, height: 50 },
-    { id: "n2", width: 100, height: 50 },
-    { id: "n3", width: 100, height: 50 },
-    { id: "n4", width: 100, height: 50 },
-    { id: "n5", width: 100, height: 50 },
-    { id: "n6", width: 100, height: 50 }
-  ],
-  edges: [
-    { id: "e1", sources: [ "n1" ], targets: [ "n2" ] },
-    { id: "e2", sources: [ "n1" ], targets: [ "n3" ] },
-    { id: "e3", sources: [ "n1" ], targets: [ "n5" ] },
-    { id: "e4", sources: [ "n2" ], targets: [ "n4" ] },
-    { id: "e5", sources: [ "n3" ], targets: [ "n4" ] },
-    { id: "e6", sources: [ "n4" ], targets: [ "n6" ] },
-    { id: "e7", sources: [ "n5" ], targets: [ "n6" ] }
-  ]
-}
+import { graph } from './graph'
+import { layoutGraph } from './elk-layout'
 
 const toolkit = newInstance({
   container: document.querySelector<HTMLDivElement>('#app')!,
   elementsDraggable: false,
-});
+})
 
 const elk = new ELK()
+const container = document.querySelector<HTMLDivElement>('#app')!
 
-elk.layout(graph)
-  .then((r) => {
-    r.children?.forEach(c => {
-      const node = document.createElement("graph-node")
-      node.id = c.id
-      node.textContent = c.id
-      node.style.top = `${c.y}px`
-      node.style.left = `${c.x}px`
-      node.style.width = `${c.width}px`
-      node.style.height = `${c.height}px`
-      document.querySelector<HTMLDivElement>('#app')?.appendChild(node)
+layoutGraph(graph, elk)
+  .then((layout) => {
+    const elements = new Map<string, HTMLElement>()
+
+    graph.nodes.forEach(({ id, label }) => {
+      const position = layout.get(id)
+      if (!position) {
+        throw new Error(`Missing layout data for node "${id}"`)
+      }
+
+      const node = document.createElement('graph-node')
+      node.id = id
+      node.textContent = label
+      node.style.top = `${position.y}px`
+      node.style.left = `${position.x}px`
+      node.style.width = `${position.width}px`
+      node.style.height = `${position.height}px`
+      container.appendChild(node)
+      elements.set(id, node)
     })
-    r.edges?.forEach(e => {
+
+    graph.edges.forEach(({ sourceNodeId, targetNodeId }) => {
+      const source = elements.get(sourceNodeId)
+      const target = elements.get(targetNodeId)
+      if (!source || !target) {
+        throw new Error(`Edge references a missing node: ${sourceNodeId} -> ${targetNodeId}`)
+      }
+
       toolkit.connect({
-        source: document.getElementById(e.sources[0]) || undefined,
-        target: document.getElementById(e.targets[0]) || undefined,
-        anchor: { type: "Perimeter", options: { shape: "Rectangle" } },
-        endpoints: ["Blank", "Blank"],
-        overlays: [
-          { type: "Arrow", options: { location: 1 } },
-        ]
+        source,
+        target,
+        anchor: { type: 'Perimeter', options: { shape: 'Rectangle' } },
+        endpoints: ['Blank', 'Blank'],
+        overlays: [{ type: 'Arrow', options: { location: 1 } }],
       })
     })
   })
