@@ -1,5 +1,7 @@
 import { newInstance } from '@jsplumb/browser-ui'
 import ELK from 'elkjs/lib/elk.bundled.js'
+import './graph-node'
+import 'bootstrap/dist/css/bootstrap.css'
 import '../scss/styles.scss'
 
 const graph = {
@@ -38,10 +40,9 @@ const elk = new ELK()
 elk.layout(graph)
   .then((r) => {
     r.children?.forEach(c => {
-      const node = document.createElement("div")
+      const node = document.createElement("graph-node")
       node.id = c.id
-      node.className = "node"
-      node.innerHTML = c.id
+      node.textContent = c.id
       node.style.top = `${c.y}px`
       node.style.left = `${c.x}px`
       node.style.width = `${c.width}px`
