@@ -44,6 +44,12 @@ export class GraphEditor {
 
   mount(): void {
     this.container.addEventListener('contextmenu', (event) => this.showContextMenu(event))
+    this.container.addEventListener('pointerdown', (event) => {
+      if (event.button === 0) {
+        this.focusNodeAtEvent(event)
+      }
+    }, true)
+    this.container.addEventListener('click', (event) => this.focusNodeAtEvent(event), true)
     this.container.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') {
         return
@@ -252,6 +258,32 @@ export class GraphEditor {
       this.contextMenu.show([
         { label: 'Add node', action: { type: 'add-node', position } },
       ], event.clientX, event.clientY, this.addNodeButton)
+    }
+  }
+
+  private focusNodeAtEvent(event: MouseEvent): void {
+    const path = event.composedPath()
+    if (path.some((target) => target instanceof HTMLInputElement)) {
+      return
+    }
+
+    const nodeFromPath = path.find(
+      (target): target is HTMLElementTagNameMap['graph-node'] =>
+        target instanceof HTMLElement && target.localName === 'graph-node',
+    )
+    const node = nodeFromPath ?? Array.from(this.nodeElements.values()).find((candidate) => {
+      const bounds = candidate.getBoundingClientRect()
+      return event.clientX >= bounds.left
+        && event.clientX <= bounds.right
+        && event.clientY >= bounds.top
+        && event.clientY <= bounds.bottom
+    })
+    if (node) {
+      requestAnimationFrame(() => {
+        if (node.isConnected && !(node.shadowRoot?.activeElement instanceof HTMLInputElement)) {
+          node.focus()
+        }
+      })
     }
   }
 
