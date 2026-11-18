@@ -131,14 +131,30 @@ export class GraphEditor {
         node.setAttribute('aria-label', `Node: ${label}`)
         this.container.appendChild(node)
         this.nodeElements.set(id, node)
-        endpoints.set(id, this.toolkit.addEndpoint(node, {
+        const endpoint = this.toolkit.addEndpoint(node, {
           source: true,
           target: true,
           maxConnections: -1,
           anchor: { type: 'Perimeter', options: { shape: 'Rectangle' } },
-          endpoint: { type: 'Dot', options: { radius: 5 } },
+          endpoint: { type: 'Dot', options: { radius: 5, cssClass: 'graph-endpoint' } },
           connectorOverlays: [{ type: 'Arrow', options: { location: 1 } }],
-        }))
+        })
+        endpoints.set(id, endpoint)
+
+        const updateEndpointEmphasis = (): void => {
+          requestAnimationFrame(() => {
+            if (node.matches(':hover, :focus-within')) {
+              endpoint.addClass('graph-endpoint-emphasized')
+            } else {
+              endpoint.removeClass('graph-endpoint-emphasized')
+            }
+          })
+        }
+        node.addEventListener('pointerenter', updateEndpointEmphasis)
+        node.addEventListener('pointerleave', updateEndpointEmphasis)
+        node.addEventListener('focusin', updateEndpointEmphasis)
+        node.addEventListener('focusout', updateEndpointEmphasis)
+
         node.addEventListener('label-change', ({ detail }) => {
           this.graph.updateNodeLabel(id, detail.label)
         })

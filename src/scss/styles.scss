@@ -2,6 +2,25 @@
     position: relative;
 }
 
+.graph-endpoint {
+    opacity: 0;
+    transition: opacity 150ms ease;
+}
+
+.graph-endpoint-emphasized {
+    opacity: 0.5;
+}
+
+.graph-endpoint:hover {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .graph-endpoint {
+        transition: none;
+    }
+}
+
 .graph-edges {
     position: absolute;
     top: 0;
