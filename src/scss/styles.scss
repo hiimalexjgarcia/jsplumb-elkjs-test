@@ -11,6 +11,11 @@
     opacity: 0.5;
 }
 
+.graph-endpoint.jtk-endpoint-drop-allowed,
+.graph-endpoint.jtk-endpoint-drop-forbidden {
+    opacity: 0.5;
+}
+
 .graph-endpoint:hover {
     opacity: 1;
 }
