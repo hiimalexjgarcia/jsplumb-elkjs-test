@@ -44,6 +44,25 @@ export class GraphEditor {
 
   mount(): void {
     this.container.addEventListener('contextmenu', (event) => this.showContextMenu(event))
+    this.container.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return
+      }
+
+      const path = event.composedPath()
+      if (path.some((target) => target instanceof HTMLInputElement)) {
+        return
+      }
+
+      const node = path.find(
+        (target): target is HTMLElementTagNameMap['graph-node'] =>
+          target instanceof HTMLElement && target.localName === 'graph-node',
+      )
+      if (node) {
+        event.preventDefault()
+        this.showNodeContextMenu(node, 0, 0)
+      }
+    })
 
     this.toolkit.bind('connection', ({ connection, sourceId, targetId }) => {
       if (this.renderingGraph) {
