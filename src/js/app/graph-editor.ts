@@ -136,7 +136,7 @@ export class GraphEditor {
           target: true,
           maxConnections: -1,
           anchor: 'Center',
-          endpoint: { type: 'Dot', options: { radius: 5, cssClass: 'graph-endpoint' } },
+          endpoint: { type: 'Dot', options: { radius: 8, cssClass: 'graph-endpoint' } },
           connectorOverlays: [{ type: 'Arrow', options: { location: 1 } }],
         })
         endpoints.set(id, endpoint)
