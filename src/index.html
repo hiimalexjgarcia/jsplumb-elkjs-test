@@ -7,28 +7,32 @@
     <title>jsplumb-elkjs-test</title>
   </head>
   <body>
-    <button id="add-node" class="btn btn-primary m-3" type="button">Add node</button>
-    <button id="show-graph" class="btn btn-secondary m-3" type="button">Show graph</button>
-    <div id="app"></div>
-    <div
-      id="graph-modal"
-      class="modal fade"
-      tabindex="-1"
-      aria-labelledby="graph-modal-title"
-      aria-hidden="true"
-    >
-      <div class="modal-dialog modal-dialog-scrollable modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h1 id="graph-modal-title" class="modal-title fs-5">Graph model</h1>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <pre id="graph-dump" class="mb-0"></pre>
+    <main id="graph-editor">
+      <div class="d-flex gap-2 m-3">
+        <button id="add-node" class="btn btn-primary" type="button">Add node</button>
+        <button id="show-graph" class="btn btn-secondary" type="button">Show graph</button>
+      </div>
+      <div id="graph-canvas"></div>
+      <div
+        id="graph-modal"
+        class="modal fade"
+        tabindex="-1"
+        aria-labelledby="graph-modal-title"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h1 id="graph-modal-title" class="modal-title fs-5">Graph model</h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <pre id="graph-dump" class="mb-0"></pre>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
     <script type="module" src="./js/main.ts"></script>
   </body>
 </html>

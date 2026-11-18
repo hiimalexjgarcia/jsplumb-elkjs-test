@@ -1,6 +1,6 @@
 import ELK from 'elkjs/lib/elk.bundled.js'
 import type { ElkNode, ElkPoint } from 'elkjs/lib/elk-api.js'
-import type { Graph } from './graph'
+import type { Graph } from '../graph/graph'
 
 const elk = new ELK()
 

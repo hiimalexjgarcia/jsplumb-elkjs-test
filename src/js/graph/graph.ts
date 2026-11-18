@@ -33,13 +33,28 @@ export class Graph {
     return edge
   }
 
-  removeEdge(sourceNodeId: string, targetNodeId: string): void {
-    const edgeIndex = this.edges.findIndex(
-      (edge) => edge.sourceNodeId === sourceNodeId && edge.targetNodeId === targetNodeId,
-    )
-    if (edgeIndex !== -1) {
-      this.edges.splice(edgeIndex, 1)
+  removeNode(id: string): void {
+    const nodeIndex = this.nodes.findIndex((node) => node.id === id)
+    if (nodeIndex === -1) {
+      throw new Error(`Cannot remove unknown node "${id}"`)
     }
+
+    this.nodes.splice(nodeIndex, 1)
+    for (let edgeIndex = this.edges.length - 1; edgeIndex >= 0; edgeIndex -= 1) {
+      const edge = this.edges[edgeIndex]
+      if (edge.sourceNodeId === id || edge.targetNodeId === id) {
+        this.edges.splice(edgeIndex, 1)
+      }
+    }
+  }
+
+  removeEdge(id: string): void {
+    const edgeIndex = this.edges.findIndex((edge) => edge.id === id)
+    if (edgeIndex === -1) {
+      throw new Error(`Cannot remove unknown edge "${id}"`)
+    }
+
+    this.edges.splice(edgeIndex, 1)
   }
 
   updateNodeLabel(id: string, label: string): void {
@@ -51,23 +66,3 @@ export class Graph {
     node.label = label
   }
 }
-
-export const graph = new Graph(
-  [
-    { id: 'n1', label: 'n1' },
-    { id: 'n2', label: 'n2' },
-    { id: 'n3', label: 'n3' },
-    { id: 'n4', label: 'n4' },
-    { id: 'n5', label: 'n5' },
-    { id: 'n6', label: 'n6' },
-  ],
-  [
-    { id: 'e1', sourceNodeId: 'n1', targetNodeId: 'n2' },
-    { id: 'e2', sourceNodeId: 'n1', targetNodeId: 'n3' },
-    { id: 'e3', sourceNodeId: 'n1', targetNodeId: 'n5' },
-    { id: 'e4', sourceNodeId: 'n2', targetNodeId: 'n4' },
-    { id: 'e5', sourceNodeId: 'n3', targetNodeId: 'n4' },
-    { id: 'e6', sourceNodeId: 'n4', targetNodeId: 'n6' },
-    { id: 'e7', sourceNodeId: 'n5', targetNodeId: 'n6' },
-  ],
-)

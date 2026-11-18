@@ -40,6 +40,10 @@ class GraphNodeElement extends HTMLElement {
     this.addEventListener('dblclick', () => this.startEditing())
   }
 
+  editLabel(): void {
+    this.startEditing()
+  }
+
   private startEditing(): void {
     if (this.editingInput) {
       return

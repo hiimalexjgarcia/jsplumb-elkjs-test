@@ -1,11 +1,12 @@
-import type { EdgeRoute } from './elk-layout'
+import type { EdgeRoute } from '../layout/elk-layout-adapter'
 
 const svgNamespace = 'http://www.w3.org/2000/svg'
 
 export function renderEdgeRoutes(routes: EdgeRoute[], width: number, height: number): SVGSVGElement {
   const svg = document.createElementNS(svgNamespace, 'svg')
   svg.classList.add('graph-edges')
-  svg.setAttribute('aria-hidden', 'true')
+  svg.setAttribute('role', 'group')
+  svg.setAttribute('aria-label', 'Graph connections')
   svg.setAttribute('width', `${width}`)
   svg.setAttribute('height', `${height}`)
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
@@ -25,7 +26,7 @@ export function renderEdgeRoutes(routes: EdgeRoute[], width: number, height: num
   definitions.appendChild(arrow)
   svg.appendChild(definitions)
 
-  routes.forEach(({ sections }) => {
+  routes.forEach(({ id, sections }) => {
     sections.forEach((points, index) => {
       if (points.length < 2) {
         return
@@ -33,6 +34,10 @@ export function renderEdgeRoutes(routes: EdgeRoute[], width: number, height: num
 
       const path = document.createElementNS(svgNamespace, 'path')
       const [start, ...remaining] = points
+      path.dataset.edgeId = id
+      path.setAttribute('role', 'button')
+      path.setAttribute('tabindex', '0')
+      path.setAttribute('aria-label', `Connection ${id}; activate for options`)
       path.setAttribute(
         'd',
         `M ${start.x} ${start.y} ${remaining.map(({ x, y }) => `L ${x} ${y}`).join(' ')}`,
