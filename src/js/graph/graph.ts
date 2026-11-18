@@ -1,6 +1,12 @@
+export interface GraphPosition {
+  x: number
+  y: number
+}
+
 export interface GraphNode {
   id: string
   label: string
+  position?: GraphPosition
 }
 
 export interface GraphEdge {
@@ -16,7 +22,7 @@ export class Graph {
   ) {}
 
   addNode(): GraphNode {
-    const node = { id: crypto.randomUUID(), label: 'New node' }
+    const node: GraphNode = { id: crypto.randomUUID(), label: 'New node' }
     this.nodes.push(node)
     return node
   }
@@ -64,5 +70,14 @@ export class Graph {
     }
 
     node.label = label
+  }
+
+  updateNodePosition(id: string, position: GraphPosition): void {
+    const node = this.nodes.find(({ id: nodeId }) => nodeId === id)
+    if (!node) {
+      throw new Error(`Cannot update position for unknown node "${id}"`)
+    }
+
+    node.position = position
   }
 }

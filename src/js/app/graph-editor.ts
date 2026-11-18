@@ -37,7 +37,7 @@ export class GraphEditor {
     this.graphModal = Modal.getOrCreateInstance(requireElement(root, '#graph-modal'))
     this.toolkit = newInstance({
       container: this.container,
-      elementsDraggable: false,
+      elementsDraggable: true,
     })
     this.contextMenu = new GraphContextMenu((action) => this.handleContextAction(action))
   }
@@ -86,6 +86,15 @@ export class GraphEditor {
       }
     })
 
+    this.toolkit.bind('drag:stop', ({ el }) => {
+      if (el instanceof HTMLElement && el.localName === 'graph-node') {
+        this.graph.updateNodePosition(el.id, {
+          x: el.offsetLeft,
+          y: el.offsetTop,
+        })
+      }
+    })
+
     this.addNodeButton.addEventListener('click', () => {
       this.graph.addNode()
       this.renderGraph().catch(console.error)
@@ -106,6 +115,15 @@ export class GraphEditor {
       return
     }
 
+    this.graph.nodes.forEach(({ id }) => {
+      const position = layout.nodes.get(id)
+      if (!position) {
+        throw new Error(`Missing layout data for node "${id}"`)
+      }
+
+      this.graph.updateNodePosition(id, { x: position.x, y: position.y })
+    })
+
     this.renderingGraph = true
     try {
       this.toolkit.deleteEveryConnection()
@@ -113,6 +131,9 @@ export class GraphEditor {
       this.container.querySelector('.graph-edges')?.remove()
       this.nodeElements.clear()
       const endpoints = new Map<string, ReturnType<typeof this.toolkit.addEndpoint>>()
+      const connectedNodeIds = new Set(
+        this.graph.edges.flatMap(({ sourceNodeId, targetNodeId }) => [sourceNodeId, targetNodeId]),
+      )
 
       this.graph.nodes.forEach(({ id, label }) => {
         const position = layout.nodes.get(id)
@@ -140,6 +161,7 @@ export class GraphEditor {
           connectorOverlays: [{ type: 'Arrow', options: { location: 1 } }],
         })
         endpoints.set(id, endpoint)
+        this.toolkit.setDraggable(node, !connectedNodeIds.has(id))
 
         const updateEndpointEmphasis = (): void => {
           requestAnimationFrame(() => {

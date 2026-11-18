@@ -27,6 +27,32 @@ const nodeWidth = 100
 const nodeHeight = 50
 
 export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
+  const connectedNodeIds = new Set(
+    graph.edges.flatMap(({ sourceNodeId, targetNodeId }) => [sourceNodeId, targetNodeId]),
+  )
+  const nodesToLayout = graph.nodes.filter(
+    ({ id, position }) => connectedNodeIds.has(id) || position === undefined,
+  )
+  const isolatedPositions: Array<[string, NodeLayout]> = []
+  graph.nodes.forEach(({ id, position }) => {
+    if (!connectedNodeIds.has(id) && position) {
+      isolatedPositions.push([
+        id,
+        { x: position.x, y: position.y, width: nodeWidth, height: nodeHeight },
+      ])
+    }
+  })
+
+  if (nodesToLayout.length === 0) {
+    const nodes = new Map(isolatedPositions)
+    return {
+      nodes,
+      edges: [],
+      width: Math.max(0, ...Array.from(nodes.values(), ({ x, width }) => x + width)),
+      height: Math.max(0, ...Array.from(nodes.values(), ({ y, height }) => y + height)),
+    }
+  }
+
   const elkGraph: ElkNode = {
     id: 'root',
     layoutOptions: {
@@ -35,7 +61,7 @@ export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
       'elk.layered.spacing.baseValue': '100',
       'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
     },
-    children: graph.nodes.map(({ id }) => ({
+    children: nodesToLayout.map(({ id }) => ({
       id,
       width: nodeWidth,
       height: nodeHeight,
@@ -48,12 +74,12 @@ export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
   }
 
   const result = await elk.layout(elkGraph)
-  const nodes = new Map(
+  const laidOutNodes = new Map<string, NodeLayout>(
     (result.children ?? []).map(({ id, x, y, width, height }) => {
       if (x === undefined || y === undefined || width === undefined || height === undefined) {
         throw new Error(`ELK did not return complete layout data for node "${id}"`)
       }
-      return [id, { x, y, width, height }]
+      return [id, { x, y, width, height }] as [string, NodeLayout]
     }),
   )
 
@@ -61,6 +87,8 @@ export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
     throw new Error('ELK did not return graph dimensions')
   }
 
+  const nodes = new Map(laidOutNodes)
+  isolatedPositions.forEach(([id, position]) => nodes.set(id, position))
   return {
     nodes,
     edges: (result.edges ?? []).map(({ id, sections }) => ({
@@ -71,7 +99,7 @@ export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
         endPoint,
       ]),
     })),
-    width: result.width,
-    height: result.height,
+    width: Math.max(result.width, ...Array.from(nodes.values(), ({ x, width }) => x + width)),
+    height: Math.max(result.height, ...Array.from(nodes.values(), ({ y, height }) => y + height)),
   }
 }
