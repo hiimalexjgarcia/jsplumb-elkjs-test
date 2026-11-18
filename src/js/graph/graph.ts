@@ -21,8 +21,11 @@ export class Graph {
     readonly edges: GraphEdge[],
   ) {}
 
-  addNode(): GraphNode {
+  addNode(position?: GraphPosition): GraphNode {
     const node: GraphNode = { id: crypto.randomUUID(), label: 'New node' }
+    if (position) {
+      node.position = position
+    }
     this.nodes.push(node)
     return node
   }

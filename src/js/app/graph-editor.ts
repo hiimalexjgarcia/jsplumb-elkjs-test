@@ -1,7 +1,7 @@
 import { newInstance } from '@jsplumb/browser-ui'
 import Modal from 'bootstrap/js/dist/modal'
 import { GraphContextMenu, type GraphContextAction } from '../components/graph-context-menu'
-import type { Graph } from '../graph/graph'
+import type { Graph, GraphPosition } from '../graph/graph'
 import { layoutGraph } from '../layout/elk-layout-adapter'
 import { renderEdgeRoutes } from '../rendering/svg-edge-renderer'
 
@@ -96,7 +96,7 @@ export class GraphEditor {
     })
 
     this.addNodeButton.addEventListener('click', () => {
-      this.graph.addNode()
+      this.graph.addNode(this.findFreeNodePosition())
       this.renderGraph().catch(console.error)
     })
 
@@ -198,6 +198,32 @@ export class GraphEditor {
       this.container.prepend(edgeSvg)
     } finally {
       this.renderingGraph = false
+    }
+  }
+
+  private findFreeNodePosition(): GraphPosition {
+    const nodeWidth = 100
+    const nodeHeight = 50
+    const gap = 20
+    const padding = 16
+    const canvasWidth = this.container.clientWidth || 720
+    const columns = Math.max(1, Math.floor((canvasWidth - padding * 2 + gap) / (nodeWidth + gap)))
+    const occupied = this.graph.nodes.flatMap(({ position }) => position ? [position] : [])
+
+    for (let index = 0; ; index += 1) {
+      const position = {
+        x: padding + (index % columns) * (nodeWidth + gap),
+        y: padding + Math.floor(index / columns) * (nodeHeight + gap),
+      }
+      const overlaps = occupied.some((other) =>
+        position.x < other.x + nodeWidth + gap
+        && position.x + nodeWidth + gap > other.x
+        && position.y < other.y + nodeHeight + gap
+        && position.y + nodeHeight + gap > other.y,
+      )
+      if (!overlaps) {
+        return position
+      }
     }
   }
 
