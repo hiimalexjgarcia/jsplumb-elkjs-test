@@ -1,5 +1,4 @@
 import { newInstance } from '@jsplumb/browser-ui'
-import ELK from 'elkjs/lib/elk.bundled.js'
 import './graph-node'
 import 'bootstrap/dist/css/bootstrap.css'
 import '../scss/styles.scss'
@@ -11,10 +10,9 @@ const toolkit = newInstance({
   elementsDraggable: false,
 })
 
-const elk = new ELK()
 const container = document.querySelector<HTMLDivElement>('#app')!
 
-layoutGraph(graph, elk)
+layoutGraph(graph)
   .then((layout) => {
     const elements = new Map<string, HTMLElement>()
 

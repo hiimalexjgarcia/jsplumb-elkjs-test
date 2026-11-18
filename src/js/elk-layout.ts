@@ -1,6 +1,8 @@
+import ELK from 'elkjs/lib/elk.bundled.js'
 import type { ElkNode } from 'elkjs/lib/elk-api.js'
-import type { ELK } from 'elkjs/lib/elk-api.js'
 import type { Graph } from './graph'
+
+const elk = new ELK()
 
 export interface NodeLayout {
   x: number
@@ -12,7 +14,7 @@ export interface NodeLayout {
 const nodeWidth = 100
 const nodeHeight = 50
 
-export async function layoutGraph(graph: Graph, elk: ELK): Promise<Map<string, NodeLayout>> {
+export async function layoutGraph(graph: Graph): Promise<Map<string, NodeLayout>> {
   const elkGraph: ElkNode = {
     id: 'root',
     layoutOptions: {
