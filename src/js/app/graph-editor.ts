@@ -238,15 +238,20 @@ export class GraphEditor {
         target instanceof HTMLElement && target.localName === 'graph-node',
     )
 
-    if (!edge && !node) {
-      return
-    }
-
     event.preventDefault()
     if (node) {
       this.showNodeContextMenu(node, event.clientX, event.clientY)
     } else if (edge?.dataset.edgeId) {
       this.showEdgeContextMenu(edge, event.clientX, event.clientY)
+    } else {
+      const bounds = this.container.getBoundingClientRect()
+      const position = {
+        x: Math.max(0, event.clientX - bounds.left + this.container.scrollLeft - 50),
+        y: Math.max(0, event.clientY - bounds.top + this.container.scrollTop - 25),
+      }
+      this.contextMenu.show([
+        { label: 'Add node', action: { type: 'add-node', position } },
+      ], event.clientX, event.clientY, this.addNodeButton)
     }
   }
 
@@ -282,6 +287,11 @@ export class GraphEditor {
         break
       case 'delete-edge':
         this.graph.removeEdge(action.edgeId)
+        this.addNodeButton.focus()
+        this.renderGraph().catch(console.error)
+        break
+      case 'add-node':
+        this.graph.addNode(action.position)
         this.addNodeButton.focus()
         this.renderGraph().catch(console.error)
         break
