@@ -1,21 +1,13 @@
-import type { GraphPosition } from '../graph/graph'
-
-export type GraphContextAction =
-  | { type: 'edit-node'; nodeId: string }
-  | { type: 'delete-node'; nodeId: string }
-  | { type: 'delete-edge'; edgeId: string }
-  | { type: 'add-node'; position: GraphPosition }
-
-interface GraphContextMenuItem {
+export interface GraphContextMenuItem<TAction> {
   label: string
-  action: GraphContextAction
+  action: TAction
 }
 
-export class GraphContextMenu {
+export class GraphContextMenu<TAction> {
   private readonly element = document.createElement('div')
   private returnFocusTarget: HTMLElement | SVGPathElement | null = null
 
-  constructor(private readonly onSelect: (action: GraphContextAction) => void) {
+  constructor(private readonly onSelect: (action: TAction) => void) {
     this.element.className = 'dropdown-menu'
     this.element.setAttribute('role', 'menu')
     this.element.hidden = true
@@ -33,7 +25,7 @@ export class GraphContextMenu {
     document.body.appendChild(this.element)
   }
 
-  show(items: GraphContextMenuItem[], x: number, y: number, returnFocusTarget: HTMLElement | SVGPathElement): void {
+  show(items: GraphContextMenuItem<TAction>[], x: number, y: number, returnFocusTarget: HTMLElement | SVGPathElement): void {
     this.returnFocusTarget = returnFocusTarget
     this.element.replaceChildren(
       ...items.map(({ label, action }) => {

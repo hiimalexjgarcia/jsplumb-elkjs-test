@@ -1,4 +1,4 @@
-import { Graph } from './graph'
+import { Graph } from '../graph/graph'
 
 export const sampleGraph = new Graph(
   [

@@ -1,6 +1,7 @@
 import ELK from 'elkjs/lib/elk.bundled.js'
 import type { ElkNode, ElkPoint } from 'elkjs/lib/elk-api.js'
 import type { Graph } from '../graph/graph'
+import { graphNodeHeight, graphNodeWidth } from '../graph/node-geometry'
 
 const elk = new ELK()
 
@@ -23,9 +24,6 @@ export interface GraphLayout {
   height: number
 }
 
-const nodeWidth = 100
-const nodeHeight = 50
-
 export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
   const connectedNodeIds = new Set(
     graph.edges.flatMap(({ sourceNodeId, targetNodeId }) => [sourceNodeId, targetNodeId]),
@@ -38,7 +36,7 @@ export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
     if (!connectedNodeIds.has(id) && position) {
       isolatedPositions.push([
         id,
-        { x: position.x, y: position.y, width: nodeWidth, height: nodeHeight },
+        { x: position.x, y: position.y, width: graphNodeWidth, height: graphNodeHeight },
       ])
     }
   })
@@ -63,8 +61,8 @@ export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
     },
     children: nodesToLayout.map(({ id }) => ({
       id,
-      width: nodeWidth,
-      height: nodeHeight,
+      width: graphNodeWidth,
+      height: graphNodeHeight,
     })),
     edges: graph.edges.map(({ id, sourceNodeId, targetNodeId }) => ({
       id,

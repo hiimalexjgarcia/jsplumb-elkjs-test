@@ -2,7 +2,7 @@ import './components/graph-node'
 import 'bootstrap/dist/css/bootstrap.css'
 import '../scss/styles.scss'
 import { GraphEditor } from './app/graph-editor'
-import { sampleGraph } from './graph/sample-graph'
+import { sampleGraph } from './fixtures/sample-graph'
 
 const root = document.querySelector<HTMLElement>('#graph-editor')
 if (!root) {
