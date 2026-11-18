@@ -135,7 +135,7 @@ export class GraphEditor {
           source: true,
           target: true,
           maxConnections: -1,
-          anchor: { type: 'Perimeter', options: { shape: 'Rectangle' } },
+          anchor: 'Center',
           endpoint: { type: 'Dot', options: { radius: 5, cssClass: 'graph-endpoint' } },
           connectorOverlays: [{ type: 'Arrow', options: { location: 1 } }],
         })
