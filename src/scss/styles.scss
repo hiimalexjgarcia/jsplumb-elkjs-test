@@ -1,3 +1,22 @@
 #app {
     position: relative;
 }
+
+.graph-edges {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+
+    path {
+        fill: none;
+        stroke: #333;
+        stroke-width: 2px;
+    }
+
+    & marker path {
+        fill: #333;
+        stroke: none;
+    }
+}
