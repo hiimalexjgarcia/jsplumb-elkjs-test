@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Graph } from '../graph/graph'
 import { graphNodeHeight, graphNodeWidth } from '../graph/node-geometry'
-import { layoutGraph } from './elk-layout-adapter'
+import { layoutGraph } from './elk-layout'
 
 describe('layoutGraph', () => {
   it('preserves positioned isolated nodes without affecting connected node layout', async () => {

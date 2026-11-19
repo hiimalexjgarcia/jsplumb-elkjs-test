@@ -1,4 +1,4 @@
-import './components/graph-node'
+import './components/graph-node-element'
 import 'bootstrap/dist/css/bootstrap.css'
 import '../scss/styles.scss'
 import { GraphEditor } from './app/graph-editor'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { interpolateEdgeRoutes } from './svg-edge-renderer'
-import type { EdgeRoute } from '../layout/elk-layout-adapter'
+import type { EdgeRoute } from '../layout/elk-layout'
 
 describe('interpolateEdgeRoutes', () => {
   it('moves route points between layouts while retaining target edge IDs', () => {

@@ -1,6 +1,23 @@
-#graph-canvas {
+.graph-viewport {
     position: relative;
-    min-height: max(60vh, var(--graph-layout-height, 0px));
+    height: min(70vh, 760px);
+    min-height: 320px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    touch-action: none;
+    border: 1px solid #dee2e6;
+}
+
+.graph-surface {
+    position: relative;
+}
+
+#graph-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+    touch-action: none;
 }
 
 graph-node:focus {
@@ -11,6 +28,25 @@ graph-node:focus {
 .graph-endpoint {
     opacity: 0;
     transition: opacity 150ms ease;
+    stroke: transparent;
+    stroke-width: 28px;
+    pointer-events: stroke;
+}
+
+.graph-endpoint circle {
+    stroke: transparent;
+    stroke-width: 28px;
+    pointer-events: stroke;
+}
+
+.graph-endpoint::before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: "";
+    transform: translate(-50%, -50%);
 }
 
 .graph-endpoint-emphasized {
@@ -54,8 +90,32 @@ graph-node:focus {
         stroke-width: 4px;
     }
 
+    path.graph-edge-selected {
+        stroke: #0d6efd;
+        stroke-width: 4px;
+    }
+
     & marker path {
         fill: #333;
         stroke: none;
+    }
+}
+
+graph-node.graph-node-selected {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+    .graph-toolbar .btn {
+        min-height: 44px;
+    }
+
+    .graph-endpoint {
+        opacity: 0.5;
+    }
+
+    .graph-edges path {
+        stroke-width: 4px;
     }
 }

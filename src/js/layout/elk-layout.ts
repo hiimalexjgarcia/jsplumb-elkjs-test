@@ -25,9 +25,7 @@ export interface GraphLayout {
 }
 
 export async function layoutGraph(graph: Graph): Promise<GraphLayout> {
-  const connectedNodeIds = new Set(
-    graph.edges.flatMap(({ sourceNodeId, targetNodeId }) => [sourceNodeId, targetNodeId]),
-  )
+  const connectedNodeIds = graph.getConnectedNodeIds()
   const nodesToLayout = graph.nodes.filter(
     ({ id, position }) => connectedNodeIds.has(id) || position === undefined,
   )

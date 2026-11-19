@@ -1,4 +1,4 @@
-import type { EdgeRoute } from '../layout/elk-layout-adapter'
+import type { EdgeRoute } from '../layout/elk-layout'
 import type { ElkPoint } from 'elkjs/lib/elk-api.js'
 
 const svgNamespace = 'http://www.w3.org/2000/svg'

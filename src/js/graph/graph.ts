@@ -42,6 +42,12 @@ export class Graph {
     return edge
   }
 
+  getConnectedNodeIds(): Set<string> {
+    return new Set(
+      this.edges.flatMap(({ sourceNodeId, targetNodeId }) => [sourceNodeId, targetNodeId]),
+    )
+  }
+
   removeNode(id: string): void {
     const nodeIndex = this.nodes.findIndex((node) => node.id === id)
     if (nodeIndex === -1) {
