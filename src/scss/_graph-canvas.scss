@@ -25,6 +25,11 @@ graph-node:focus {
     opacity: 1;
 }
 
+.graph-endpoint.graph-endpoint-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .graph-endpoint {
         transition: none;

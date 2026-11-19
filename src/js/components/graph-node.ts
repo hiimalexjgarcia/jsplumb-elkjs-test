@@ -60,6 +60,7 @@ class GraphNodeElement extends HTMLElement {
     input.value = originalLabel
     input.setAttribute('aria-label', `Edit label for node ${this.id}`)
     this.editingInput = input
+    this.dispatchEvent(new Event('label-edit-start', { bubbles: true, composed: true }))
     nodeContent.replaceChildren(input)
     input.focus()
     input.select()
@@ -73,6 +74,7 @@ class GraphNodeElement extends HTMLElement {
       const label = save ? input.value : originalLabel
       this.textContent = label
       nodeContent.replaceChildren(document.createElement('slot'))
+      this.dispatchEvent(new Event('label-edit-end', { bubbles: true, composed: true }))
 
       if (save && label !== originalLabel) {
         this.dispatchEvent(new CustomEvent<LabelChangeDetail>('label-change', {
@@ -101,6 +103,8 @@ declare global {
 
   interface HTMLElementEventMap {
     'label-change': CustomEvent<LabelChangeDetail>
+    'label-edit-start': Event
+    'label-edit-end': Event
   }
 }
 

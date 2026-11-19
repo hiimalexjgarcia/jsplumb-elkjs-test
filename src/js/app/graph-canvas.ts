@@ -183,6 +183,11 @@ export class GraphCanvas {
         }
       })
     }
+    node.addEventListener('label-edit-start', () => endpoint.addClass('graph-endpoint-hidden'))
+    node.addEventListener('label-edit-end', () => {
+      endpoint.removeClass('graph-endpoint-hidden')
+      updateEndpointEmphasis()
+    })
     node.addEventListener('pointerenter', updateEndpointEmphasis)
     node.addEventListener('pointerleave', updateEndpointEmphasis)
     node.addEventListener('focusin', updateEndpointEmphasis)
