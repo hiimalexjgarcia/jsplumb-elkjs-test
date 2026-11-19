@@ -1,5 +1,6 @@
 #graph-canvas {
     position: relative;
+    min-height: max(60vh, var(--graph-layout-height, 0px));
 }
 
 graph-node:focus {
