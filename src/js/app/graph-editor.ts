@@ -1,13 +1,15 @@
 import Modal from 'bootstrap/js/dist/modal'
-import { GraphContextMenu } from '../components/graph-context-menu'
+import { GraphContextMenu } from '../ui/graph-context-menu'
 import { findFreeNodePosition, graphNodeHeight, graphNodeWidth } from '../graph/node-geometry'
-import type { Graph } from '../graph/graph'
-import type { GraphEditorAction } from './graph-editor-action'
+import type { Graph, GraphPosition } from '../graph/graph'
 import { GraphCanvas } from './graph-canvas'
+import { GraphSelectionController } from './graph-selection-controller'
 
-type GraphSelection =
-  | { type: 'node'; id: string }
-  | { type: 'edge'; id: string }
+type GraphEditorAction =
+  | { type: 'edit-node'; nodeId: string }
+  | { type: 'delete-node'; nodeId: string }
+  | { type: 'delete-edge'; edgeId: string }
+  | { type: 'add-node'; position: GraphPosition }
 
 function requireElement<T extends Element>(root: ParentNode, selector: string): T {
   const element = root.querySelector<T>(selector)
@@ -32,9 +34,10 @@ export class GraphEditor {
   private readonly graphModal: Modal
   private readonly contextMenu: GraphContextMenu<GraphEditorAction>
   private readonly canvas: GraphCanvas
-  private selection?: GraphSelection
-  private connectMode = false
-  private connectSourceId?: string
+  private readonly selection: GraphSelectionController
+  private mounted = false
+  private listenerController?: AbortController
+  private disposed = false
 
   constructor(
     root: HTMLElement,
@@ -58,12 +61,30 @@ export class GraphEditor {
       requireElement(root, '#graph-viewport'),
       requireElement(root, '#graph-surface'),
     )
+    this.selection = new GraphSelectionController(
+      this.container,
+      graph,
+      this.canvas,
+      this.connectModeButton,
+      this.editSelectedButton,
+      this.deleteSelectedButton,
+      this.actionStatus,
+    )
     this.contextMenu = new GraphContextMenu<GraphEditorAction>((action) => this.handleContextAction(action))
   }
 
   mount(): void {
-    this.container.addEventListener('contextmenu', (event) => this.showContextMenu(event))
-    this.container.addEventListener('click', (event) => this.handleCanvasClick(event))
+    if (this.disposed) {
+      throw new Error('Cannot mount a disposed graph editor')
+    }
+    if (this.mounted) {
+      return
+    }
+    this.mounted = true
+    const listeners = new AbortController()
+    this.listenerController = listeners
+    this.container.addEventListener('contextmenu', (event) => this.showContextMenu(event), { signal: listeners.signal })
+    this.container.addEventListener('click', (event) => this.handleCanvasClick(event), { signal: listeners.signal })
     this.container.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') {
         return
@@ -74,57 +95,53 @@ export class GraphEditor {
         return
       }
 
-      const node = path.find(
-        (target): target is HTMLElementTagNameMap['graph-node'] =>
-          target instanceof HTMLElement && target.localName === 'graph-node',
-      )
+      const node = this.nodeFromPath(path)
       if (node) {
         event.preventDefault()
         this.showNodeContextMenu(node, 0, 0)
         return
       }
 
-      const edge = path.find(
-        (target): target is SVGPathElement =>
-          target instanceof SVGPathElement && target.dataset.edgeId !== undefined,
-      )
+      const edge = this.edgeFromPath(path)
       if (edge) {
         event.preventDefault()
         this.showEdgeContextMenu(edge, 0, 0)
       }
-    })
+    }, { signal: listeners.signal })
 
     this.addNodeButton.addEventListener('click', () => {
       const occupied = this.graph.nodes.flatMap(({ position }) => position ? [position] : [])
       this.graph.addNode(findFreeNodePosition(occupied, this.container.clientWidth))
       this.canvas.render().catch(console.error)
-    })
+    }, { signal: listeners.signal })
 
     this.connectModeButton.addEventListener('click', () => {
-      this.connectMode = !this.connectMode
-      this.connectSourceId = this.connectMode && this.selection?.type === 'node'
-        ? this.selection.id
-        : undefined
-      this.updateConnectModeStatus()
-    })
-    this.editSelectedButton.addEventListener('click', () => {
-      if (this.selection?.type === 'node') {
-        this.canvas.getNodeElement(this.selection.id)?.editLabel()
-      }
-    })
-    this.deleteSelectedButton.addEventListener('click', () => this.deleteSelection())
-    this.zoomInButton.addEventListener('click', () => this.canvas.zoomIn())
-    this.zoomOutButton.addEventListener('click', () => this.canvas.zoomOut())
+      this.selection.toggleConnectMode()
+    }, { signal: listeners.signal })
+    this.editSelectedButton.addEventListener('click', () => this.selection.editSelection(), { signal: listeners.signal })
+    this.deleteSelectedButton.addEventListener('click', () => this.selection.deleteSelection(), { signal: listeners.signal })
+    this.zoomInButton.addEventListener('click', () => this.canvas.zoomIn(), { signal: listeners.signal })
+    this.zoomOutButton.addEventListener('click', () => this.canvas.zoomOut(), { signal: listeners.signal })
     this.fitGraphButton.addEventListener('click', () => {
       this.canvas.fitToScreen()
-    })
+    }, { signal: listeners.signal })
 
     this.showGraphButton.addEventListener('click', () => {
       this.graphDump.textContent = JSON.stringify(this.graph, null, 2)
       this.graphModal.show()
-    })
+    }, { signal: listeners.signal })
 
     this.canvas.mount()
+  }
+
+  dispose(): void {
+    if (this.disposed) {
+      return
+    }
+    this.disposed = true
+    this.listenerController?.abort()
+    this.contextMenu.dispose()
+    this.canvas.dispose()
   }
 
   private showContextMenu(event: MouseEvent): void {
@@ -153,7 +170,7 @@ export class GraphEditor {
   }
 
   private showNodeContextMenu(node: HTMLElementTagNameMap['graph-node'], x: number, y: number): void {
-    this.setSelection({ type: 'node', id: node.id })
+    this.selection.selectNode(node.id)
     const bounds = node.getBoundingClientRect()
     this.contextMenu.show([
       { label: 'Edit label', action: { type: 'edit-node', nodeId: node.id } },
@@ -167,7 +184,7 @@ export class GraphEditor {
       return
     }
 
-    this.setSelection({ type: 'edge', id: edgeId })
+    this.selection.selectEdge(edgeId)
     const bounds = edge.getBoundingClientRect()
     this.contextMenu.show([
       { label: 'Delete edge', action: { type: 'delete-edge', edgeId } },
@@ -180,17 +197,12 @@ export class GraphEditor {
         this.canvas.getNodeElement(action.nodeId)?.editLabel()
         break
       case 'delete-node':
-        this.graph.removeNode(action.nodeId)
-        this.clearConnectSource(action.nodeId)
-        this.setSelection(undefined)
+        this.selection.deleteNode(action.nodeId)
         this.addNodeButton.focus()
-        this.canvas.render().catch(console.error)
         break
       case 'delete-edge':
-        this.graph.removeEdge(action.edgeId)
-        this.setSelection(undefined)
+        this.selection.deleteEdge(action.edgeId)
         this.addNodeButton.focus()
-        this.canvas.render().catch(console.error)
         break
       case 'add-node':
         this.graph.addNode(action.position)
@@ -202,115 +214,9 @@ export class GraphEditor {
 
   private handleCanvasClick(event: MouseEvent): void {
     const path = event.composedPath()
-    if (path.some((target) => target instanceof HTMLInputElement)) {
-      return
-    }
-
     const node = this.nodeFromPath(path) ?? this.nodeAtPoint(event.clientX, event.clientY)
     const edge = this.edgeFromPath(path)
-
-    if (this.connectMode) {
-      if (node) {
-        this.handleConnectNode(node)
-      } else if (edge) {
-        this.actionStatus.textContent = 'Tap a node or an empty area to connect.'
-      } else if (this.connectSourceId) {
-        const point = this.canvas.canvasPointFromClient(event.clientX, event.clientY)
-        if (point) {
-          this.canvas.addConnectedNode(this.connectSourceId, {
-            x: Math.max(0, point.x - graphNodeWidth / 2),
-            y: Math.max(0, point.y - graphNodeHeight / 2),
-          }).then(() => {
-            this.actionStatus.textContent = 'Connected. Tap a source node to continue.'
-          }).catch((error: unknown) => {
-            console.error(error)
-            this.actionStatus.textContent = 'Could not create the connected node.'
-          })
-          this.connectSourceId = undefined
-          this.actionStatus.textContent = 'Creating connected node...'
-        }
-      }
-      return
-    }
-
-    if (node) {
-      this.setSelection({ type: 'node', id: node.id })
-    } else if (edge?.dataset.edgeId) {
-      this.setSelection({ type: 'edge', id: edge.dataset.edgeId })
-    } else {
-      this.setSelection(undefined)
-    }
-  }
-
-  private handleConnectNode(node: HTMLElementTagNameMap['graph-node']): void {
-    if (!this.connectSourceId) {
-      this.connectSourceId = node.id
-      this.setSelection({ type: 'node', id: node.id })
-      this.actionStatus.textContent = 'Source selected. Tap a target node or empty area.'
-      return
-    }
-
-    if (this.connectSourceId === node.id) {
-      this.actionStatus.textContent = 'Choose a different target node.'
-      return
-    }
-
-    this.graph.addEdge(this.connectSourceId, node.id)
-    this.connectSourceId = undefined
-    this.setSelection({ type: 'node', id: node.id })
-    this.actionStatus.textContent = 'Connected. Tap a source node to continue.'
-    this.canvas.render().catch(console.error)
-  }
-
-  private setSelection(selection: GraphSelection | undefined): void {
-    this.selection = selection
-    this.container.querySelectorAll<HTMLElementTagNameMap['graph-node']>('graph-node')
-      .forEach((node) => node.classList.toggle(
-        'graph-node-selected',
-        selection?.type === 'node' && selection.id === node.id,
-      ))
-    this.container.querySelectorAll<SVGPathElement>('.graph-edges path[data-edge-id]')
-      .forEach((edge) => edge.classList.toggle(
-        'graph-edge-selected',
-        selection?.type === 'edge' && selection.id === edge.dataset.edgeId,
-      ))
-    this.editSelectedButton.disabled = selection?.type !== 'node'
-    this.deleteSelectedButton.disabled = selection === undefined
-  }
-
-  private deleteSelection(): void {
-    if (!this.selection) {
-      return
-    }
-
-    if (this.selection.type === 'node') {
-      this.graph.removeNode(this.selection.id)
-      this.clearConnectSource(this.selection.id)
-    } else {
-      this.graph.removeEdge(this.selection.id)
-    }
-    this.setSelection(undefined)
-    this.canvas.render().catch(console.error)
-  }
-
-  private updateConnectModeStatus(): void {
-    this.connectModeButton.setAttribute('aria-pressed', String(this.connectMode))
-    this.connectModeButton.classList.toggle('btn-primary', this.connectMode)
-    this.connectModeButton.classList.toggle('btn-outline-primary', !this.connectMode)
-    if (this.connectMode) {
-      this.actionStatus.textContent = this.connectSourceId
-        ? 'Tap a target node or empty area.'
-        : 'Tap a source node to begin connecting.'
-    } else {
-      this.connectSourceId = undefined
-      this.actionStatus.textContent = ''
-    }
-  }
-
-  private clearConnectSource(nodeId: string): void {
-    if (this.connectSourceId === nodeId) {
-      this.connectSourceId = undefined
-    }
+    this.selection.handleCanvasClick(event, node, edge)
   }
 
   private nodeFromPath(path: EventTarget[]): HTMLElementTagNameMap['graph-node'] | undefined {

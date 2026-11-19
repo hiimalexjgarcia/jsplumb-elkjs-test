@@ -6,6 +6,15 @@ export interface GraphContextMenuItem<TAction> {
 export class GraphContextMenu<TAction> {
   private readonly element = document.createElement('div')
   private returnFocusTarget: HTMLElement | SVGPathElement | null = null
+  private disposed = false
+
+  private readonly outsidePointerdownListener = (event: PointerEvent): void => {
+    this.handleOutsidePointerdown(event)
+  }
+  private readonly documentKeydownListener = (event: KeyboardEvent): void => {
+    this.handleDocumentKeydown(event)
+  }
+  private readonly windowScrollListener = (): void => this.hide()
 
   constructor(private readonly onSelect: (action: TAction) => void) {
     this.element.className = 'dropdown-menu'
@@ -19,13 +28,17 @@ export class GraphContextMenu<TAction> {
         this.hide(false)
       }
     })
-    document.addEventListener('pointerdown', (event) => this.handleOutsidePointerdown(event))
-    document.addEventListener('keydown', (event) => this.handleDocumentKeydown(event))
-    window.addEventListener('scroll', () => this.hide(), true)
+    document.addEventListener('pointerdown', this.outsidePointerdownListener)
+    document.addEventListener('keydown', this.documentKeydownListener)
+    window.addEventListener('scroll', this.windowScrollListener, true)
     document.body.appendChild(this.element)
   }
 
   show(items: GraphContextMenuItem<TAction>[], x: number, y: number, returnFocusTarget: HTMLElement | SVGPathElement): void {
+    if (this.disposed) {
+      throw new Error('Cannot show a disposed graph context menu')
+    }
+
     this.returnFocusTarget = returnFocusTarget
     this.element.replaceChildren(
       ...items.map(({ label, action }) => {
@@ -49,6 +62,18 @@ export class GraphContextMenu<TAction> {
     this.element.style.left = `${Math.max(margin, Math.min(x, window.innerWidth - bounds.width - margin))}px`
     this.element.style.top = `${Math.max(margin, Math.min(y, window.innerHeight - bounds.height - margin))}px`
     this.element.querySelector<HTMLButtonElement>('button')?.focus()
+  }
+
+  dispose(): void {
+    if (this.disposed) {
+      return
+    }
+    this.disposed = true
+    document.removeEventListener('pointerdown', this.outsidePointerdownListener)
+    document.removeEventListener('keydown', this.documentKeydownListener)
+    window.removeEventListener('scroll', this.windowScrollListener, true)
+    this.element.remove()
+    this.returnFocusTarget = null
   }
 
   private hide(restoreFocus = true): void {

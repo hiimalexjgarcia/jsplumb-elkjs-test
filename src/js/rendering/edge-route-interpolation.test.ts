@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { interpolateEdgeRoutes } from './svg-edge-renderer'
+import { interpolateEdgeRoutes } from './edge-route-interpolation'
 import type { EdgeRoute } from '../layout/elk-layout'
 
 describe('interpolateEdgeRoutes', () => {

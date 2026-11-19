@@ -6,6 +6,15 @@ export class GraphInteractionController {
   private readonly toolkit
   private readonly transientEdgeIds = new WeakMap<object, string>()
   private eventsSuppressed = false
+  private mounted = false
+  private disposed = false
+
+  private readonly focusNodePointerDown = (event: PointerEvent): void => {
+    if (event.button === 0) {
+      this.focusNodeAtEvent(event)
+    }
+  }
+  private readonly focusNodeClick = (event: MouseEvent): void => this.focusNodeAtEvent(event)
 
   constructor(
     private readonly container: HTMLDivElement,
@@ -22,12 +31,15 @@ export class GraphInteractionController {
   }
 
   mount(): void {
-    this.container.addEventListener('pointerdown', (event) => {
-      if (event.button === 0) {
-        this.focusNodeAtEvent(event)
-      }
-    }, true)
-    this.container.addEventListener('click', (event) => this.focusNodeAtEvent(event), true)
+    if (this.disposed) {
+      throw new Error('Cannot mount a disposed graph interaction controller')
+    }
+    if (this.mounted) {
+      return
+    }
+    this.mounted = true
+    this.container.addEventListener('pointerdown', this.focusNodePointerDown, true)
+    this.container.addEventListener('click', this.focusNodeClick, true)
 
     this.toolkit.bind('connection', ({ connection, sourceId, targetId }) => {
       if (this.eventsSuppressed) {
@@ -129,6 +141,16 @@ export class GraphInteractionController {
 
   setZoom(zoom: number): void {
     this.toolkit.setZoom(zoom, true)
+  }
+
+  dispose(): void {
+    if (this.disposed) {
+      return
+    }
+    this.disposed = true
+    this.container.removeEventListener('pointerdown', this.focusNodePointerDown, true)
+    this.container.removeEventListener('click', this.focusNodeClick, true)
+    this.toolkit.destroy()
   }
 
   private requestRender(): void {

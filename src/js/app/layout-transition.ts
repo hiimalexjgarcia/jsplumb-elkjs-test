@@ -1,6 +1,7 @@
 import type { GraphEdge, GraphPosition } from '../graph/graph'
 import type { EdgeRoute, GraphLayout } from '../layout/elk-layout'
-import { interpolateEdgeRoutes, updateEdgeRoutes } from '../rendering/svg-edge-renderer'
+import { interpolateEdgeRoutes } from '../rendering/edge-route-interpolation'
+import { updateEdgeRoutes } from '../rendering/svg-edge-renderer'
 
 const layoutAnimationDuration = 300
 

@@ -22,6 +22,20 @@ export class GraphViewportController {
   private panPointerId?: number
   private panStart?: { point: PointerPosition; scroll: GraphPosition }
   private pinchStart?: PinchStart
+  private resizeObserver?: ResizeObserver
+  private mounted = false
+  private disposed = false
+
+  private readonly pointerDownListener = (event: PointerEvent): void => this.handlePointerDown(event)
+  private readonly pointerMoveListener = (event: PointerEvent): void => this.handlePointerMove(event)
+  private readonly pointerEndListener = (event: PointerEvent): void => this.handlePointerEnd(event)
+  private readonly wheelListener = (event: WheelEvent): void => {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault()
+      this.zoomAt(this.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1), event.clientX, event.clientY)
+    }
+  }
+  private readonly resizeListener = (): void => this.updateSurfaceSize()
 
   constructor(
     private readonly viewport: HTMLDivElement,
@@ -31,19 +45,46 @@ export class GraphViewportController {
   ) {}
 
   mount(): void {
-    this.viewport.addEventListener('pointerdown', (event) => this.handlePointerDown(event))
-    this.viewport.addEventListener('pointermove', (event) => this.handlePointerMove(event))
-    this.viewport.addEventListener('pointerup', (event) => this.handlePointerEnd(event))
-    this.viewport.addEventListener('pointercancel', (event) => this.handlePointerEnd(event))
-    this.viewport.addEventListener('lostpointercapture', (event) => this.handlePointerEnd(event))
-    this.viewport.addEventListener('wheel', (event) => {
-      if (event.ctrlKey || event.metaKey) {
-        event.preventDefault()
-        this.zoomAt(this.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1), event.clientX, event.clientY)
-      }
-    }, { passive: false })
-    new ResizeObserver(() => this.updateSurfaceSize()).observe(this.viewport)
+    if (this.disposed) {
+      throw new Error('Cannot mount a disposed graph viewport')
+    }
+    if (this.mounted) {
+      return
+    }
+    this.mounted = true
+    this.viewport.addEventListener('pointerdown', this.pointerDownListener)
+    this.viewport.addEventListener('pointermove', this.pointerMoveListener)
+    this.viewport.addEventListener('pointerup', this.pointerEndListener)
+    this.viewport.addEventListener('pointercancel', this.pointerEndListener)
+    this.viewport.addEventListener('lostpointercapture', this.pointerEndListener)
+    this.viewport.addEventListener('wheel', this.wheelListener, { passive: false })
+    this.resizeObserver = new ResizeObserver(this.resizeListener)
+    this.resizeObserver.observe(this.viewport)
     this.updateSurfaceSize()
+  }
+
+  dispose(): void {
+    if (this.disposed) {
+      return
+    }
+    this.disposed = true
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = undefined
+    this.viewport.removeEventListener('pointerdown', this.pointerDownListener)
+    this.viewport.removeEventListener('pointermove', this.pointerMoveListener)
+    this.viewport.removeEventListener('pointerup', this.pointerEndListener)
+    this.viewport.removeEventListener('pointercancel', this.pointerEndListener)
+    this.viewport.removeEventListener('lostpointercapture', this.pointerEndListener)
+    this.viewport.removeEventListener('wheel', this.wheelListener)
+    this.pointers.forEach((_, pointerId) => {
+      if (this.viewport.hasPointerCapture(pointerId)) {
+        this.viewport.releasePointerCapture(pointerId)
+      }
+    })
+    this.pointers.clear()
+    this.panPointerId = undefined
+    this.panStart = undefined
+    this.pinchStart = undefined
   }
 
   setContentSize(width: number, height: number): void {
