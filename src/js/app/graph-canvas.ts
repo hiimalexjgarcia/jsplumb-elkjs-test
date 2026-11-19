@@ -1,5 +1,6 @@
-import { newInstance } from '@jsplumb/browser-ui'
+import { newInstance, type Connection } from '@jsplumb/browser-ui'
 import type { Graph } from '../graph/graph'
+import { graphNodeHeight, graphNodeWidth } from '../graph/node-geometry'
 import { layoutGraph, type EdgeRoute, type GraphLayout, type NodeLayout } from '../layout/elk-layout-adapter'
 import { interpolateEdgeRoutes, renderEdgeRoutes, updateEdgeRoutes } from '../rendering/svg-edge-renderer'
 import { getMovedConnectedNodeIds } from './layout-animation'
@@ -56,6 +57,14 @@ export class GraphCanvas {
       }
     })
 
+    this.toolkit.bind<Connection>('connection:abort', (connection, originalEvent) => {
+      if (this.renderingGraph || !originalEvent) {
+        return
+      }
+
+      this.createConnectedNodeAtDrop(connection, originalEvent).catch(console.error)
+    })
+
     this.toolkit.bind('drag:stop', ({ el }) => {
       if (el instanceof HTMLElement && el.localName === 'graph-node') {
         this.graph.updateNodePosition(el.id, {
@@ -79,6 +88,7 @@ export class GraphCanvas {
       return
     }
 
+    this.container.style.setProperty('--graph-layout-height', `${layout.height}px`)
     this.cancelLayoutAnimation()
     const startPositions = new Map(
       Array.from(this.nodeElements, ([id, node]) => [
@@ -183,6 +193,11 @@ export class GraphCanvas {
         }
       })
     }
+    node.addEventListener('label-edit-start', () => endpoint.addClass('graph-endpoint-hidden'))
+    node.addEventListener('label-edit-end', () => {
+      endpoint.removeClass('graph-endpoint-hidden')
+      updateEndpointEmphasis()
+    })
     node.addEventListener('pointerenter', updateEndpointEmphasis)
     node.addEventListener('pointerleave', updateEndpointEmphasis)
     node.addEventListener('focusin', updateEndpointEmphasis)
@@ -192,6 +207,75 @@ export class GraphCanvas {
     })
 
     return node
+  }
+
+  private async createConnectedNodeAtDrop(connection: Connection, event: Event): Promise<void> {
+    const point = this.getClientPoint(event)
+    if (!point || this.isOccupiedDropTarget(point.x, point.y)) {
+      return
+    }
+
+    const bounds = this.container.getBoundingClientRect()
+    if (
+      point.x < bounds.left
+      || point.x > bounds.right
+      || point.y < bounds.top
+      || point.y > bounds.bottom
+    ) {
+      return
+    }
+
+    const sourceNode = this.nodeElements.get(connection.sourceId)
+    const sourceEndpoint = sourceNode
+      && this.toolkit.getEndpoints(sourceNode).find(({ isSource }) => isSource)
+    if (!sourceEndpoint) {
+      throw new Error(`Could not find source endpoint for node "${connection.sourceId}"`)
+    }
+
+    const node = this.graph.addNode({
+      x: Math.max(0, point.x - bounds.left + this.container.scrollLeft - graphNodeWidth / 2),
+      y: Math.max(0, point.y - bounds.top + this.container.scrollTop - graphNodeHeight / 2),
+    })
+    await this.render()
+
+    const targetNode = this.nodeElements.get(node.id)
+    const targetEndpoint = targetNode
+      && this.toolkit.getEndpoints(targetNode).find(({ isTarget }) => isTarget)
+    if (!targetEndpoint) {
+      throw new Error(`Could not find target endpoint for node "${node.id}"`)
+    }
+
+    this.toolkit.connect({ source: sourceEndpoint, target: targetEndpoint })
+  }
+
+  private getClientPoint(event: Event): { x: number; y: number } | undefined {
+    if (event instanceof MouseEvent) {
+      return { x: event.clientX, y: event.clientY }
+    }
+
+    if (typeof TouchEvent !== 'undefined' && event instanceof TouchEvent) {
+      const touch = event.changedTouches[0] ?? event.touches[0]
+      return touch ? { x: touch.clientX, y: touch.clientY } : undefined
+    }
+
+    return undefined
+  }
+
+  private isOccupiedDropTarget(clientX: number, clientY: number): boolean {
+    const selectors = 'graph-node, .graph-endpoint, .graph-edges path[data-edge-id]'
+    const overNode = Array.from(this.nodeElements.values()).some((node) => {
+      const bounds = node.getBoundingClientRect()
+      return clientX >= bounds.left
+        && clientX <= bounds.right
+        && clientY >= bounds.top
+        && clientY <= bounds.bottom
+    })
+    if (overNode) {
+      return true
+    }
+
+    const target = document.elementFromPoint(clientX, clientY)
+    return target !== null && (target.matches(selectors) || target.closest(selectors) !== null)
   }
 
   private animateLayout(
