@@ -225,11 +225,8 @@ export class GraphCanvas {
       return
     }
 
-    const sourceNode = this.nodeElements.get(connection.sourceId)
-    const sourceEndpoint = sourceNode
-      && this.toolkit.getEndpoints(sourceNode).find(({ isSource }) => isSource)
-    if (!sourceEndpoint) {
-      throw new Error(`Could not find source endpoint for node "${connection.sourceId}"`)
+    if (!this.graph.nodes.some(({ id }) => id === connection.sourceId)) {
+      throw new Error(`Cannot create a node for unknown source "${connection.sourceId}"`)
     }
 
     const node = this.graph.addNode({
@@ -237,15 +234,8 @@ export class GraphCanvas {
       y: Math.max(0, point.y - bounds.top + this.container.scrollTop - graphNodeHeight / 2),
     })
     await this.render()
-
-    const targetNode = this.nodeElements.get(node.id)
-    const targetEndpoint = targetNode
-      && this.toolkit.getEndpoints(targetNode).find(({ isTarget }) => isTarget)
-    if (!targetEndpoint) {
-      throw new Error(`Could not find target endpoint for node "${node.id}"`)
-    }
-
-    this.toolkit.connect({ source: sourceEndpoint, target: targetEndpoint })
+    this.graph.addEdge(connection.sourceId, node.id)
+    await this.render()
   }
 
   private getClientPoint(event: Event): { x: number; y: number } | undefined {
