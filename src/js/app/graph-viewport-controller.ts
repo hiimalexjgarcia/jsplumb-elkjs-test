@@ -1,4 +1,5 @@
 import type { GraphPosition } from '../graph/graph'
+import { getPanForZoomAnchor, viewportPointToCanvasPoint } from './graph-viewport-transform'
 
 interface PointerPosition {
   x: number
@@ -17,10 +18,14 @@ const maximumZoom = 2.5
 export class GraphViewportController {
   private readonly pointers = new Map<number, PointerPosition>()
   private zoom = 1
+  private pan: GraphPosition = { x: 0, y: 0 }
   private contentWidth = 0
   private contentHeight = 0
   private panPointerId?: number
-  private panStart?: { point: PointerPosition; scroll: GraphPosition }
+  private panStart?: { point: PointerPosition; pan: GraphPosition }
+  private panMoved = false
+  private suppressClick = false
+  private suppressClickTimer?: number
   private pinchStart?: PinchStart
   private resizeObserver?: ResizeObserver
   private mounted = false
@@ -29,6 +34,18 @@ export class GraphViewportController {
   private readonly pointerDownListener = (event: PointerEvent): void => this.handlePointerDown(event)
   private readonly pointerMoveListener = (event: PointerEvent): void => this.handlePointerMove(event)
   private readonly pointerEndListener = (event: PointerEvent): void => this.handlePointerEnd(event)
+  private readonly clickListener = (event: MouseEvent): void => {
+    if (!this.suppressClick) {
+      return
+    }
+
+    this.suppressClick = false
+    window.clearTimeout(this.suppressClickTimer)
+    this.suppressClickTimer = undefined
+    event.preventDefault()
+    event.stopPropagation()
+    event.stopImmediatePropagation()
+  }
   private readonly wheelListener = (event: WheelEvent): void => {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault()
@@ -57,6 +74,7 @@ export class GraphViewportController {
     this.viewport.addEventListener('pointerup', this.pointerEndListener)
     this.viewport.addEventListener('pointercancel', this.pointerEndListener)
     this.viewport.addEventListener('lostpointercapture', this.pointerEndListener)
+    this.viewport.addEventListener('click', this.clickListener, true)
     this.viewport.addEventListener('wheel', this.wheelListener, { passive: false })
     this.resizeObserver = new ResizeObserver(this.resizeListener)
     this.resizeObserver.observe(this.viewport)
@@ -75,7 +93,9 @@ export class GraphViewportController {
     this.viewport.removeEventListener('pointerup', this.pointerEndListener)
     this.viewport.removeEventListener('pointercancel', this.pointerEndListener)
     this.viewport.removeEventListener('lostpointercapture', this.pointerEndListener)
+    this.viewport.removeEventListener('click', this.clickListener, true)
     this.viewport.removeEventListener('wheel', this.wheelListener)
+    window.clearTimeout(this.suppressClickTimer)
     this.pointers.forEach((_, pointerId) => {
       if (this.viewport.hasPointerCapture(pointerId)) {
         this.viewport.releasePointerCapture(pointerId)
@@ -84,6 +104,8 @@ export class GraphViewportController {
     this.pointers.clear()
     this.panPointerId = undefined
     this.panStart = undefined
+    this.panMoved = false
+    this.suppressClick = false
     this.pinchStart = undefined
   }
 
@@ -104,10 +126,10 @@ export class GraphViewportController {
       return undefined
     }
 
-    return {
-      x: (clientX - bounds.left - this.viewport.clientLeft + this.viewport.scrollLeft) / this.zoom,
-      y: (clientY - bounds.top - this.viewport.clientTop + this.viewport.scrollTop) / this.zoom,
-    }
+    return viewportPointToCanvasPoint({
+      x: clientX - bounds.left - this.viewport.clientLeft,
+      y: clientY - bounds.top - this.viewport.clientTop,
+    }, this.zoom, this.pan)
   }
 
   zoomIn(): void {
@@ -128,11 +150,16 @@ export class GraphViewportController {
       (this.viewport.clientHeight - 24) / this.contentHeight,
       1,
     )
-    this.zoomAt(scale, this.viewportCenterX(), this.viewportCenterY())
+    this.zoom = Math.max(minimumZoom, Math.min(maximumZoom, scale))
+    this.pan = {
+      x: this.viewport.clientWidth / 2 - this.contentWidth * this.zoom / 2,
+      y: this.viewport.clientHeight / 2 - this.contentHeight * this.zoom / 2,
+    }
+    this.updateView()
   }
 
   private handlePointerDown(event: PointerEvent): void {
-    if (event.pointerType !== 'touch') {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
       return
     }
 
@@ -141,8 +168,9 @@ export class GraphViewportController {
       this.panPointerId = event.pointerId
       this.panStart = {
         point: { x: event.clientX, y: event.clientY },
-        scroll: { x: this.viewport.scrollLeft, y: this.viewport.scrollTop },
+        pan: { ...this.pan },
       }
+      this.panMoved = false
     } else if (this.pointers.size === 2) {
       this.startPinch()
       this.pointers.forEach((_, pointerId) => this.viewport.setPointerCapture(pointerId))
@@ -166,14 +194,21 @@ export class GraphViewportController {
         this.setZoom(zoom, centerX, centerY, this.pinchStart.contentPoint)
       }
     } else if (event.pointerId === this.panPointerId && this.panStart) {
-      if (Math.hypot(
+      const moved = Math.hypot(
         event.clientX - this.panStart.point.x,
         event.clientY - this.panStart.point.y,
-      ) > 8 && !this.viewport.hasPointerCapture(event.pointerId)) {
-        this.viewport.setPointerCapture(event.pointerId)
+      ) > 8
+      if (moved) {
+        this.panMoved = true
+        if (!this.viewport.hasPointerCapture(event.pointerId)) {
+          this.viewport.setPointerCapture(event.pointerId)
+        }
       }
-      this.viewport.scrollLeft = this.panStart.scroll.x - (event.clientX - this.panStart.point.x)
-      this.viewport.scrollTop = this.panStart.scroll.y - (event.clientY - this.panStart.point.y)
+      this.pan = {
+        x: this.panStart.pan.x + event.clientX - this.panStart.point.x,
+        y: this.panStart.pan.y + event.clientY - this.panStart.point.y,
+      }
+      this.updateTransform()
     }
   }
 
@@ -182,9 +217,19 @@ export class GraphViewportController {
       return
     }
 
+    if (event.pointerId === this.panPointerId && this.panMoved) {
+      this.suppressClick = true
+      window.clearTimeout(this.suppressClickTimer)
+      this.suppressClickTimer = window.setTimeout(() => {
+        this.suppressClick = false
+        this.suppressClickTimer = undefined
+      }, 0)
+    }
+
     this.pointers.delete(event.pointerId)
     this.panPointerId = undefined
     this.panStart = undefined
+    this.panMoved = false
     if (this.pointers.size < 2) {
       this.pinchStart = undefined
     }
@@ -203,23 +248,18 @@ export class GraphViewportController {
     this.pinchStart = {
       distance,
       zoom: this.zoom,
-      contentPoint: {
-        x: (this.viewport.scrollLeft + centerX) / this.zoom,
-        y: (this.viewport.scrollTop + centerY) / this.zoom,
-      },
+      contentPoint: viewportPointToCanvasPoint({ x: centerX, y: centerY }, this.zoom, this.pan),
     }
     this.panPointerId = undefined
     this.panStart = undefined
+    this.panMoved = false
   }
 
   private zoomAt(zoom: number, clientX: number, clientY: number): void {
     const bounds = this.viewport.getBoundingClientRect()
     const centerX = clientX - bounds.left - this.viewport.clientLeft
     const centerY = clientY - bounds.top - this.viewport.clientTop
-    const contentPoint = {
-      x: (this.viewport.scrollLeft + centerX) / this.zoom,
-      y: (this.viewport.scrollTop + centerY) / this.zoom,
-    }
+    const contentPoint = viewportPointToCanvasPoint({ x: centerX, y: centerY }, this.zoom, this.pan)
     this.setZoom(zoom, centerX, centerY, contentPoint)
   }
 
@@ -230,20 +270,27 @@ export class GraphViewportController {
     contentPoint: GraphPosition,
   ): void {
     this.zoom = Math.max(minimumZoom, Math.min(maximumZoom, zoom))
+    this.pan = getPanForZoomAnchor({ x: centerX, y: centerY }, contentPoint, this.zoom)
+    this.updateView()
+  }
+
+  private updateView(): void {
     this.updateSurfaceSize()
+    this.updateTransform()
     this.onZoomChange(this.zoom)
-    this.viewport.scrollLeft = contentPoint.x * this.zoom - centerX
-    this.viewport.scrollTop = contentPoint.y * this.zoom - centerY
+  }
+
+  private updateTransform(): void {
+    this.canvas.style.transform = `translate(${this.pan.x}px, ${this.pan.y}px) scale(${this.zoom})`
   }
 
   private updateSurfaceSize(): void {
-    const width = Math.max(this.contentWidth, this.viewport.clientWidth / this.zoom)
-    const height = Math.max(this.contentHeight, this.viewport.clientHeight / this.zoom)
+    const width = Math.max(0, this.contentWidth)
+    const height = Math.max(0, this.contentHeight)
     this.canvas.style.width = `${width}px`
     this.canvas.style.height = `${height}px`
-    this.canvas.style.transform = `scale(${this.zoom})`
-    this.surface.style.width = `${width * this.zoom}px`
-    this.surface.style.height = `${height * this.zoom}px`
+    this.surface.style.width = `${Math.max(width * this.zoom, this.viewport.clientWidth)}px`
+    this.surface.style.height = `${Math.max(height * this.zoom, this.viewport.clientHeight)}px`
   }
 
   private isEmptyCanvasPoint(clientX: number, clientY: number): boolean {

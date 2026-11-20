@@ -2,7 +2,7 @@
     position: relative;
     height: min(70vh, 760px);
     min-height: 320px;
-    overflow: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
     touch-action: none;
     border: 1px solid #dee2e6;
